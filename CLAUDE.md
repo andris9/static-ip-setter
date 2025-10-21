@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **No emojis**: Do not use emojis anywhere (not in code, not in documentation, not in commit messages)
 2. **Git commits**: Do not include Claude as co-contributor in git commit messages
 3. **Use ocr-exercise-builder agent**: This is an OCR Deputy package - use the ocr-exercise-builder agent for all development tasks related to this package
+4. **CLAUDE.md is internal**: Do not reference CLAUDE.md from package.toml or other project files - it is for Claude Code only, not part of the package distribution
 
 ## Project Overview
 
@@ -79,3 +80,32 @@ shellcheck src/static-ip.sh
 ```bash
 sudo STATIC_IP=10.1.1.3/24 GATEWAY=10.1.1.1 ./src/static-ip.sh
 ```
+
+## Release Process
+
+This package uses the universal Deputy release script located at `../release.sh`.
+
+**Prerequisites**:
+- Docker installed and running
+- Deputy credentials configured in `~/.deputy`
+- `deputy-ubuntu:24.04` Docker image available
+- All changes committed to git
+
+**Release steps**:
+```bash
+# From the package directory
+../release.sh <version> -y
+
+# Example:
+../release.sh 1.0.0 -y
+```
+
+The release script will:
+1. Update version in `package.toml`
+2. Commit version bump
+3. Create git tag `v<version>`
+4. Push commit and tag to origin
+5. Publish package to Deputy registry
+6. Verify publication
+
+**Version format**: Use semantic versioning (e.g., 1.0.0, 1.1.0, 2.0.0)

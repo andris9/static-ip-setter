@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Static IPv4 setter for Ubuntu/Kali. Disables cloud-init networking, removes conflicting installer netplan. Uses netplan, nmcli, or systemd-networkd if present; otherwise applies temporary IP. No DHCP or Internet assumed."
 authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
+readme = "README.md"
 
 assets = [["src/static-ip.sh", "/opt/static-ip-setter/static-ip.sh", "755"]]
 
