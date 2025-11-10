@@ -8,8 +8,8 @@
 #   be assumed. Designed as an OCR Deputy feature service.
 #
 # Environment Variables:
-#   STATIC_IP (required) - IP address with CIDR notation (e.g., 10.1.1.3/24)
-#   IFACE (optional)     - Network interface name (auto-detected if not set)
+#   STATIC_IP (optional) - IP address with CIDR notation (default: 10.1.1.0/24)
+#   IFACE (optional)     - Network interface name (default: ens192)
 #   GATEWAY (optional)   - Default gateway IP address
 #   DNS (optional)       - Comma-separated DNS servers (e.g., 8.8.8.8,8.8.4.4)
 #
@@ -55,14 +55,11 @@ fail(){ echo "[static-ip-setter][ERROR] $*" >&2; exit 1; }
 # INPUT VALIDATION AND CONFIGURATION
 # =============================================================================
 
-# Validate required environment variable
-# STATIC_IP must include CIDR notation (e.g., 10.1.1.3/24)
-: "${STATIC_IP:?STATIC_IP must be set (e.g. 10.1.1.3/24)}"
-
-# Optional configuration (default to empty if not provided)
-IFACE="${IFACE:-}"      # Network interface (auto-detected if not specified)
-GATEWAY="${GATEWAY:-}"  # Default gateway (no routing if not specified)
-DNS="${DNS:-}"          # DNS servers (no DNS config if not specified, suitable for offline ranges)
+# Set default values for environment variables
+STATIC_IP="${STATIC_IP:-10.1.1.0/24}"  # Default CIDR if not specified
+IFACE="${IFACE:-ens192}"                # Default interface name if not specified
+GATEWAY="${GATEWAY:-}"                  # Default gateway (no routing if not specified)
+DNS="${DNS:-}"                          # DNS servers (no DNS config if not specified, suitable for offline ranges)
 
 # =============================================================================
 # NETWORK INTERFACE AUTO-DETECTION
@@ -90,10 +87,14 @@ DNS="${DNS:-}"          # DNS servers (no DNS config if not specified, suitable 
 # connectivity, not virtual interfaces that may exist on the system.
 #
 detect_iface() {
-  # If IFACE is explicitly set, use it without detection
+  # If IFACE is explicitly set and exists, use it without detection
   if [[ -n "${IFACE:-}" ]]; then
-    log "Interface detection: using explicitly set IFACE=$IFACE"
-    echo "$IFACE"; return
+    if [[ -e "/sys/class/net/$IFACE" ]]; then
+      log "Interface detection: using IFACE=$IFACE (exists)"
+      echo "$IFACE"; return
+    else
+      log "Interface detection: specified IFACE=$IFACE does not exist, starting auto-detection"
+    fi
   fi
 
   log "Interface detection: starting auto-detection"
