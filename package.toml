@@ -1,6 +1,6 @@
 [package]
 name = "static-ip-setter"
-version = "1.0.7"
+version = "1.0.8"
 description = "Static IPv4 setter for Ubuntu/Kali. Disables cloud-init networking, removes conflicting installer netplan. Uses netplan, nmcli, or systemd-networkd if present; otherwise applies temporary IP. No DHCP or Internet assumed."
 authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
