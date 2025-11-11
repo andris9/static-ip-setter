@@ -8,10 +8,11 @@
 #   be assumed. Designed as an OCR Deputy feature service.
 #
 # Environment Variables:
-#   STATIC_IP (required) - IP address with CIDR notation (e.g., 10.1.1.20/24)
-#   IFACE (optional)     - Network interface name (default: ens192)
-#   GATEWAY (optional)   - Default gateway IP address
-#   DNS (optional)       - Comma-separated DNS servers (e.g., 8.8.8.8,8.8.4.4)
+#   STATIC_IP (required)     - IP address with CIDR notation (e.g., 10.1.1.20/24)
+#   IFACE (optional)         - Network interface name (default: ens192)
+#   GATEWAY (optional)       - Default gateway IP address
+#   DNS (optional)           - Comma-separated DNS servers (e.g., 8.8.8.8,8.8.4.4)
+#   SUDO_PASSWORD (optional) - Password for sudo elevation if required
 #
 # Strategy:
 #   Attempts configuration methods in priority order based on what's available:
@@ -25,6 +26,7 @@
 #   - Removes installer netplan files that may contain hardcoded IPs
 #   - Detects and works with systemd-resolved for DNS configuration
 #   - Auto-detects physical network interfaces, filtering out virtual/container interfaces
+#   - Automatically elevates to root using sudo if not already running as root
 #
 # Exit Codes:
 #   0 - Success
@@ -36,7 +38,14 @@
 
 set -euo pipefail
 
-# Logging functions
+# =============================================================================
+# LOGGING SETUP (Pre-elevation)
+# =============================================================================
+#
+# Logging functions that work both before and after sudo elevation.
+# Before elevation: stdout only
+# After elevation: stdout + file (if writable)
+#
 # log()  - Normal informational messages
 # warn() - Non-fatal warnings that should be investigated
 # fail() - Fatal errors that terminate execution
@@ -45,72 +54,83 @@ warn(){ echo "[static-ip-setter][WARN] $*"; }
 fail(){ echo "[static-ip-setter][ERROR] $*" >&2; exit 1; }
 
 # =============================================================================
-# PRIVILEGE HANDLING
+# SYSTEM INFORMATION (Before Elevation)
 # =============================================================================
 #
-# Network configuration typically requires root privileges. However, we cannot
-# assume passwordless sudo is available (Kali requires passwords by default).
+# Log system information immediately, before any sudo elevation.
+# This helps diagnose issues with the script execution context.
+#
+log "=========================================="
+log "static-ip-setter starting"
+log "=========================================="
+log "Timestamp: $(date)"
+log "User: $(whoami)"
+log "Hostname: $(hostname)"
+log "Kernel: $(uname -r)"
+log "OS: $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'unknown')"
+log "Running as root: $(if [ "$(id -u)" -eq 0 ]; then echo 'yes (UID=0)'; else echo "no (UID=$(id -u))"; fi)"
+log "=========================================="
+
+# =============================================================================
+# SUDO SELF-ELEVATION
+# =============================================================================
+#
+# Network configuration requires root privileges. This script automatically
+# elevates itself to root using sudo if not already running as root.
 #
 # Strategy:
-#   - Try commands directly first (in case already running as root)
-#   - If permission denied, try with sudo (for systems with passwordless sudo)
-#   - If sudo fails, log warning and continue (allow partial configuration)
+#   1. Check if already running as root (id -u == 0)
+#   2. If not root and SUDO_PASSWORD is provided, use password-based sudo
+#   3. If not root and no SUDO_PASSWORD, assume passwordless sudo
+#   4. Use exec to replace the current process with elevated version
+#   5. Preserve all environment variables through sudo
 #
-# This allows the script to:
-#   - Work when run as root (Deputy may run it as root)
-#   - Work with passwordless sudo (Ubuntu server)
-#   - Partially work without sudo (at least configure temporary IP)
+# After elevation, the script runs as root and all subsequent operations
+# can be performed without sudo prefixes.
 #
+if [ "$(id -u)" -ne 0 ]; then
+  log "Not running as root (UID=$(id -u)), elevating with sudo..."
 
-# Wrapper function to try privileged commands with graceful fallback
-# Usage: try_priv <description> <command> [args...]
-# Returns: 0 if command succeeded (with or without sudo), 1 if failed
-try_priv() {
-  local description="$1"
-  shift
-  local cmd="$1"
-
-  # Try direct execution first (already root, or command doesn't need root)
-  if "$@" 2>/dev/null; then
-    return 0
+  if [ -n "${SUDO_PASSWORD:-}" ]; then
+    # Password-based sudo (e.g., Kali Linux)
+    log "Using password-based sudo elevation"
+    exec echo "$SUDO_PASSWORD" | sudo -S \
+      STATIC_IP="${STATIC_IP:-}" \
+      IFACE="${IFACE:-}" \
+      GATEWAY="${GATEWAY:-}" \
+      DNS="${DNS:-}" \
+      SUDO_PASSWORD="${SUDO_PASSWORD}" \
+      bash "$0" "$@"
+  else
+    # Passwordless sudo (e.g., Ubuntu Server)
+    log "Using passwordless sudo elevation"
+    exec sudo \
+      STATIC_IP="${STATIC_IP:-}" \
+      IFACE="${IFACE:-}" \
+      GATEWAY="${GATEWAY:-}" \
+      DNS="${DNS:-}" \
+      bash "$0" "$@"
   fi
-
-  # Direct execution failed, try with sudo if available
-  if command -v sudo >/dev/null 2>&1; then
-    if sudo -n "$@" 2>/dev/null; then
-      return 0
-    fi
-  fi
-
-  # Both methods failed, log warning but don't abort
-  warn "$description failed (insufficient privileges)"
-  return 1
-}
-
-# Check if we have effective root privileges
-# This determines whether we can set up file logging and attempt privileged operations
-HAVE_ROOT=false
-if [ "$(id -u)" -eq 0 ]; then
-  HAVE_ROOT=true
-  log "Running as root (UID=0)"
-elif sudo -n true 2>/dev/null; then
-  HAVE_ROOT=true
-  log "Running with passwordless sudo access"
-else
-  log "Running without root privileges - will attempt partial configuration"
 fi
 
-# Setup logging to file (only if we have privileges)
-if [ "$HAVE_ROOT" = true ]; then
-  LOG_FILE="/var/log/static-ip-setter.log"
-  if mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null && touch "$LOG_FILE" 2>/dev/null; then
-    exec > >(tee -a "$LOG_FILE") 2>&1
-    log "Logging to $LOG_FILE"
-  else
-    warn "Cannot create log file, logging to stdout only"
-  fi
+# At this point, we are running as root
+# All subsequent operations can be performed without sudo
+
+log "Running as root (UID=0) - proceeding with network configuration"
+
+# =============================================================================
+# FILE LOGGING SETUP (Post-elevation)
+# =============================================================================
+#
+# Now that we have root privileges, attempt to set up dual logging
+# (stdout + file). If file creation fails, continue with stdout only.
+#
+LOG_FILE="/var/log/static-ip-setter.log"
+if mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null && touch "$LOG_FILE" 2>/dev/null; then
+  exec > >(tee -a "$LOG_FILE") 2>&1
+  log "Logging to $LOG_FILE (dual output: stdout + file)"
 else
-  log "No root access - logging to stdout only"
+  warn "Cannot create log file $LOG_FILE, logging to stdout only"
 fi
 
 # =============================================================================
@@ -295,7 +315,7 @@ disable_cloudinit() {
     # Create a config file that tells cloud-init to ignore networking
     # This prevents cloud-init from managing network configuration
     # while allowing it to handle other initialization tasks
-    if ! echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg; then
+    if ! sh -c 'echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg'; then
       warn "Failed to write cloud-init disable config"
     fi
   fi
@@ -807,7 +827,7 @@ apply_temporary_ip() {
     fi
 
     # Create temporary resolv.conf file
-    local tmp="/etc/resolv.conf.static-by-static-ip-setter"
+    local tmp="/tmp/resolv.conf.static-by-static-ip-setter"
     {
       echo "# generated by static-ip-setter"
       # Set aggressive timeouts for offline environments
@@ -866,17 +886,8 @@ apply_temporary_ip() {
 # We stop at the first successful method and verify it worked.
 #
 main() {
-  # Log execution context for debugging
-  log "=========================================="
-  log "static-ip-setter starting"
-  log "=========================================="
-  log "Timestamp: $(date)"
-  log "User: $(whoami)"
-  log "Hostname: $(hostname)"
-  log "Kernel: $(uname -r)"
-  log "OS: $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'unknown')"
-
   # Log system state before configuration
+  log "=========================================="
   log "System state before configuration:"
   log "Available network managers:"
   if have_cmd netplan; then

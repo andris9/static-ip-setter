@@ -24,6 +24,7 @@ The script is controlled via environment variables:
 - `IFACE` (optional): Network interface name (default: `ens192`; auto-detected if interface does not exist)
 - `GATEWAY` (optional): Default gateway IP address
 - `DNS` (optional): Comma-separated DNS servers (e.g., `8.8.8.8,8.8.4.4`)
+- `SUDO_PASSWORD` (optional): Password for sudo elevation if required (e.g., on Kali Linux)
 
 ## Network Configuration Methods
 
@@ -83,7 +84,7 @@ The script is installed to `/tmp/static-ip-setter/static-ip.sh` with executable 
 ## Usage Example
 
 ```bash
-# Basic usage with required IP
+# Basic usage with required IP (assumes passwordless sudo or running as root)
 STATIC_IP=10.1.1.20/24 /tmp/static-ip-setter/static-ip.sh
 
 # With gateway and DNS
@@ -91,7 +92,20 @@ STATIC_IP=10.1.1.20/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /tmp/static-ip-sette
 
 # With explicit interface
 STATIC_IP=10.1.1.20/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/static-ip.sh
+
+# With sudo password (e.g., on Kali Linux)
+STATIC_IP=10.1.1.20/24 SUDO_PASSWORD=kali /tmp/static-ip-setter/static-ip.sh
 ```
+
+## Privilege Elevation
+
+The script requires root privileges for network configuration. It automatically elevates itself using sudo:
+
+- If running as root (UID=0), no elevation is needed
+- If not root and `SUDO_PASSWORD` is provided, uses password-based sudo
+- If not root and no `SUDO_PASSWORD`, assumes passwordless sudo is configured
+
+All environment variables are preserved during elevation.
 
 ## Troubleshooting
 
@@ -106,7 +120,7 @@ If the script fails or behaves unexpectedly:
 ## Requirements
 
 - Ubuntu 18.04+ or Kali Linux
-- Root privileges
+- Root privileges (script auto-elevates with sudo if needed)
 - At least one physical network interface
 - One of: netplan, NetworkManager, systemd-networkd, or `ip` command
 
