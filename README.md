@@ -78,22 +78,22 @@ This package is installed via OCR Deputy:
 deputy install static-ip-setter
 ```
 
-The script is installed to `/opt/static-ip-setter/static-ip.sh` with executable permissions.
+The script is installed to `/tmp/static-ip-setter/static-ip.sh` with executable permissions.
 
 ## Usage Example
 
 ```bash
 # Basic usage with defaults (10.1.1.0/24 on ens192)
-/opt/static-ip-setter/static-ip.sh
+/tmp/static-ip-setter/static-ip.sh
 
 # With custom IP and defaults
-STATIC_IP=10.1.1.3/24 /opt/static-ip-setter/static-ip.sh
+STATIC_IP=10.1.1.3/24 /tmp/static-ip-setter/static-ip.sh
 
 # With gateway and DNS
-STATIC_IP=10.1.1.3/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /opt/static-ip-setter/static-ip.sh
+STATIC_IP=10.1.1.3/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /tmp/static-ip-setter/static-ip.sh
 
 # With explicit interface
-STATIC_IP=10.1.1.3/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /opt/static-ip-setter/static-ip.sh
+STATIC_IP=10.1.1.3/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/static-ip.sh
 ```
 
 ## Troubleshooting

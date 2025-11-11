@@ -6,12 +6,12 @@ authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
 readme = "README.md"
 
-assets = [["src/static-ip.sh", "/opt/static-ip-setter/static-ip.sh", "755"]]
+assets = [["src/static-ip.sh", "/tmp/static-ip-setter/static-ip.sh", "755"]]
 
 [content]
 type = "feature"
 
 [feature]
 type = "service"
-action = "/opt/static-ip-setter/static-ip.sh"
+action = "/tmp/static-ip-setter/static-ip.sh"
 restarts = false

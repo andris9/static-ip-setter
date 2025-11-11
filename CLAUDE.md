@@ -19,7 +19,7 @@ The package installs as a feature service that configures network interfaces dur
 
 **Package Type**: Deputy feature package (OCR exercise component)
 **Package Format**: TOML-based package definition with shell script asset
-**Deployment**: Installs script to `/opt/static-ip-setter/static-ip.sh` with executable permissions
+**Deployment**: Installs script to `/tmp/static-ip-setter/static-ip.sh` with executable permissions
 
 ### Core Components
 
