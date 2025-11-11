@@ -8,7 +8,7 @@
 #   be assumed. Designed as an OCR Deputy feature service.
 #
 # Environment Variables:
-#   STATIC_IP (optional) - IP address with CIDR notation (default: 10.1.1.0/24)
+#   STATIC_IP (required) - IP address with CIDR notation (e.g., 10.1.1.20/24)
 #   IFACE (optional)     - Network interface name (default: ens192)
 #   GATEWAY (optional)   - Default gateway IP address
 #   DNS (optional)       - Comma-separated DNS servers (e.g., 8.8.8.8,8.8.4.4)
@@ -36,7 +36,7 @@
 
 set -euo pipefail
 
-# Logging functions (defined early before sudo elevation)
+# Logging functions
 # log()  - Normal informational messages
 # warn() - Non-fatal warnings that should be investigated
 # fail() - Fatal errors that terminate execution
@@ -45,54 +45,84 @@ warn(){ echo "[static-ip-setter][WARN] $*"; }
 fail(){ echo "[static-ip-setter][ERROR] $*" >&2; exit 1; }
 
 # =============================================================================
-# ROOT PRIVILEGE ELEVATION
+# PRIVILEGE HANDLING
 # =============================================================================
 #
-# Network configuration requires root privileges. In OCR Deputy deployments,
-# passwordless sudo is typically configured for the deployment user.
+# Network configuration typically requires root privileges. However, we cannot
+# assume passwordless sudo is available (Kali requires passwords by default).
 #
 # Strategy:
-#   - Check if running as root (UID 0)
-#   - If not root, re-execute script with sudo
-#   - Use 'exec sudo' to replace current process (preserves environment)
-#   - If sudo fails (password required), exit with error
+#   - Try commands directly first (in case already running as root)
+#   - If permission denied, try with sudo (for systems with passwordless sudo)
+#   - If sudo fails, log warning and continue (allow partial configuration)
 #
-# Environment preservation:
-#   - All environment variables (STATIC_IP, IFACE, etc.) are preserved
-#   - Script arguments are preserved via "$@"
+# This allows the script to:
+#   - Work when run as root (Deputy may run it as root)
+#   - Work with passwordless sudo (Ubuntu server)
+#   - Partially work without sudo (at least configure temporary IP)
 #
-if [ "$(id -u)" -ne 0 ]; then
-  log "Not running as root, attempting to elevate with sudo..."
 
-  # Check if sudo is available
-  if ! command -v sudo >/dev/null 2>&1; then
-    fail "sudo command not found. This script requires root privileges."
+# Wrapper function to try privileged commands with graceful fallback
+# Usage: try_priv <description> <command> [args...]
+# Returns: 0 if command succeeded (with or without sudo), 1 if failed
+try_priv() {
+  local description="$1"
+  shift
+  local cmd="$1"
+
+  # Try direct execution first (already root, or command doesn't need root)
+  if "$@" 2>/dev/null; then
+    return 0
   fi
 
-  # Re-execute script with sudo
-  # exec replaces current process, preserving environment and arguments
-  # shellcheck disable=SC2093
-  exec sudo "$0" "$@"
+  # Direct execution failed, try with sudo if available
+  if command -v sudo >/dev/null 2>&1; then
+    if sudo -n "$@" 2>/dev/null; then
+      return 0
+    fi
+  fi
 
-  # If we reach here, sudo failed
-  fail "Failed to elevate privileges with sudo. Passwordless sudo may not be configured."
+  # Both methods failed, log warning but don't abort
+  warn "$description failed (insufficient privileges)"
+  return 1
+}
+
+# Check if we have effective root privileges
+# This determines whether we can set up file logging and attempt privileged operations
+HAVE_ROOT=false
+if [ "$(id -u)" -eq 0 ]; then
+  HAVE_ROOT=true
+  log "Running as root (UID=0)"
+elif sudo -n true 2>/dev/null; then
+  HAVE_ROOT=true
+  log "Running with passwordless sudo access"
+else
+  log "Running without root privileges - will attempt partial configuration"
 fi
 
-log "Running as root (UID=$(id -u))"
-
-# Setup logging to file and stdout
-# Both streams are captured to allow post-exercise log analysis while
-# maintaining real-time visibility in Deputy service output
-LOG_FILE="/var/log/static-ip-setter.log"
-mkdir -p "$(dirname "$LOG_FILE")"
-exec > >(tee -a "$LOG_FILE") 2>&1
+# Setup logging to file (only if we have privileges)
+if [ "$HAVE_ROOT" = true ]; then
+  LOG_FILE="/var/log/static-ip-setter.log"
+  if mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null && touch "$LOG_FILE" 2>/dev/null; then
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    log "Logging to $LOG_FILE"
+  else
+    warn "Cannot create log file, logging to stdout only"
+  fi
+else
+  log "No root access - logging to stdout only"
+fi
 
 # =============================================================================
 # INPUT VALIDATION AND CONFIGURATION
 # =============================================================================
 
-# Set default values for environment variables
-STATIC_IP="${STATIC_IP:-10.1.1.0/24}"  # Default CIDR if not specified
+# Validate required environment variables
+if [[ -z "${STATIC_IP:-}" ]]; then
+  fail "STATIC_IP environment variable is required (e.g., STATIC_IP=10.1.1.20/24)"
+fi
+
+# Set default values for optional environment variables
 IFACE="${IFACE:-ens192}"                # Default interface name if not specified
 GATEWAY="${GATEWAY:-}"                  # Default gateway (no routing if not specified)
 DNS="${DNS:-}"                          # DNS servers (no DNS config if not specified, suitable for offline ranges)

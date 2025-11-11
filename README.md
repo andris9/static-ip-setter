@@ -20,7 +20,7 @@ This OCR Deputy feature package configures static IPv4 addresses on systems wher
 
 The script is controlled via environment variables:
 
-- `STATIC_IP` (optional): IP address with CIDR notation (default: `10.1.1.0/24`)
+- `STATIC_IP` (required): IP address with CIDR notation (e.g., `10.1.1.20/24`)
 - `IFACE` (optional): Network interface name (default: `ens192`; auto-detected if interface does not exist)
 - `GATEWAY` (optional): Default gateway IP address
 - `DNS` (optional): Comma-separated DNS servers (e.g., `8.8.8.8,8.8.4.4`)
@@ -83,17 +83,14 @@ The script is installed to `/tmp/static-ip-setter/static-ip.sh` with executable 
 ## Usage Example
 
 ```bash
-# Basic usage with defaults (10.1.1.0/24 on ens192)
-/tmp/static-ip-setter/static-ip.sh
-
-# With custom IP and defaults
-STATIC_IP=10.1.1.3/24 /tmp/static-ip-setter/static-ip.sh
+# Basic usage with required IP
+STATIC_IP=10.1.1.20/24 /tmp/static-ip-setter/static-ip.sh
 
 # With gateway and DNS
-STATIC_IP=10.1.1.3/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /tmp/static-ip-setter/static-ip.sh
+STATIC_IP=10.1.1.20/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /tmp/static-ip-setter/static-ip.sh
 
 # With explicit interface
-STATIC_IP=10.1.1.3/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/static-ip.sh
+STATIC_IP=10.1.1.20/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/static-ip.sh
 ```
 
 ## Troubleshooting
