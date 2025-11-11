@@ -94,13 +94,15 @@ if [ "$(id -u)" -ne 0 ]; then
   if [ -n "${SUDO_PASSWORD:-}" ]; then
     # Password-based sudo (e.g., Kali Linux)
     log "Using password-based sudo elevation"
-    exec echo "$SUDO_PASSWORD" | sudo -S \
+    echo "$SUDO_PASSWORD" | sudo -S \
       STATIC_IP="${STATIC_IP:-}" \
       IFACE="${IFACE:-}" \
       GATEWAY="${GATEWAY:-}" \
       DNS="${DNS:-}" \
       SUDO_PASSWORD="${SUDO_PASSWORD}" \
       bash "$0" "$@"
+    # Exit after sudo completes to prevent duplicate execution
+    exit $?
   else
     # Passwordless sudo (e.g., Ubuntu Server)
     log "Using passwordless sudo elevation"
