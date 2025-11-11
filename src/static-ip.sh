@@ -90,14 +90,14 @@ detect_iface() {
   # If IFACE is explicitly set and exists, use it without detection
   if [[ -n "${IFACE:-}" ]]; then
     if [[ -e "/sys/class/net/$IFACE" ]]; then
-      log "Interface detection: using IFACE=$IFACE (exists)"
+      log "Interface detection: using IFACE=$IFACE (exists)" >&2
       echo "$IFACE"; return
     else
-      log "Interface detection: specified IFACE=$IFACE does not exist, starting auto-detection"
+      log "Interface detection: specified IFACE=$IFACE does not exist, starting auto-detection" >&2
     fi
   fi
 
-  log "Interface detection: starting auto-detection"
+  log "Interface detection: starting auto-detection" >&2
 
   # Build list of non-loopback physical interface candidates
   # Iterate through /sys/class/net which contains all network interfaces
@@ -109,31 +109,31 @@ detect_iface() {
 
     # Skip loopback interface
     if [[ "$ifc" == "lo" ]]; then
-      log "Interface detection: skipping loopback interface: $ifc"
+      log "Interface detection: skipping loopback interface: $ifc" >&2
       continue
     fi
 
     # Skip virtual/container interfaces that shouldn't be configured
     # with static IPs in a CTF context
     if [[ "$ifc" =~ ^(docker|veth|br-|virbr|tun|tap) ]]; then
-      log "Interface detection: skipping virtual/container interface: $ifc"
+      log "Interface detection: skipping virtual/container interface: $ifc" >&2
       continue
     fi
 
     nonlo+=("$ifc")
   done
 
-  log "Interface detection: found ${#all_ifaces[@]} total interfaces: ${all_ifaces[*]}"
-  log "Interface detection: ${#nonlo[@]} physical candidates: ${nonlo[*]}"
+  log "Interface detection: found ${#all_ifaces[@]} total interfaces: ${all_ifaces[*]}" >&2
+  log "Interface detection: ${#nonlo[@]} physical candidates: ${nonlo[*]}" >&2
 
   # Simple case: exactly one physical interface found
   if [[ ${#nonlo[@]} -eq 1 ]]; then
-    log "Interface detection: selected ${nonlo[0]} (only physical interface)"
+    log "Interface detection: selected ${nonlo[0]} (only physical interface)" >&2
     echo "${nonlo[0]}"; return
   fi
 
   # Multiple interfaces found - apply priority selection logic
-  log "Interface detection: multiple interfaces found, applying priority logic"
+  log "Interface detection: multiple interfaces found, applying priority logic" >&2
 
   # Priority 1: Prefer predictable NIC naming patterns
   # Modern Linux uses predictable naming: enp0s3, ens33, etc.
@@ -141,12 +141,12 @@ detect_iface() {
   for pat in '^enp[0-9]+s[0-9]+' '^ens[0-9]+' '^eth[0-9]+'; do
     cand="$(printf "%s\n" "${nonlo[@]}" | grep -E "$pat" | head -n1 || true)"
     if [[ -n "$cand" ]]; then
-      log "Interface detection: selected $cand (matched pattern: $pat)"
+      log "Interface detection: selected $cand (matched pattern: $pat)" >&2
       echo "$cand"
       return
     fi
   done
-  log "Interface detection: no interfaces matched predictable naming patterns"
+  log "Interface detection: no interfaces matched predictable naming patterns" >&2
 
   # Priority 2: Prefer interfaces with active carrier signal
   # LOWER_UP flag indicates physical link is established (cable connected)
@@ -157,11 +157,11 @@ detect_iface() {
       | grep -vE '^(docker|veth|br-|virbr|tun|tap)' \
       | awk '/LOWER_UP/ {print $1; exit}')"
     if [[ -n "$cand" ]]; then
-      log "Interface detection: selected $cand (has carrier signal - LOWER_UP)"
+      log "Interface detection: selected $cand (has carrier signal - LOWER_UP)" >&2
       echo "$cand"
       return
     fi
-    log "Interface detection: no interfaces with carrier signal found"
+    log "Interface detection: no interfaces with carrier signal found" >&2
   fi
 
   # Priority 3: Prefer interfaces in operational states (up or dormant)
@@ -170,23 +170,23 @@ detect_iface() {
   for n in "${nonlo[@]}"; do
     st="$(cat "/sys/class/net/$n/operstate" 2>/dev/null || echo unknown)"
     if [[ "$st" == "up" || "$st" == "dormant" ]]; then
-      log "Interface detection: selected $n (operstate: $st)"
+      log "Interface detection: selected $n (operstate: $st)" >&2
       echo "$n"
       return
     fi
-    log "Interface detection: $n operstate is $st (not up/dormant)"
+    log "Interface detection: $n operstate is $st (not up/dormant)" >&2
   done
 
   # Priority 4: Fallback to first available physical interface
   # If all heuristics fail, just use the first one we found
   if [[ ${#nonlo[@]} -gt 0 ]]; then
-    log "Interface detection: selected ${nonlo[0]} (first available physical interface - fallback)"
+    log "Interface detection: selected ${nonlo[0]} (first available physical interface - fallback)" >&2
     echo "${nonlo[0]}"
     return
   fi
 
   # No suitable interface found
-  log "Interface detection: FAILED - no suitable interfaces found"
+  log "Interface detection: FAILED - no suitable interfaces found" >&2
   echo ""
 }
 
