@@ -36,20 +36,56 @@
 
 set -euo pipefail
 
-# Setup logging to file and stdout
-# Both streams are captured to allow post-exercise log analysis while
-# maintaining real-time visibility in Deputy service output
-LOG_FILE="/var/log/static-ip-setter.log"
-mkdir -p "$(dirname "$LOG_FILE")"
-exec > >(tee -a "$LOG_FILE") 2>&1
-
-# Logging functions
+# Logging functions (defined early before sudo elevation)
 # log()  - Normal informational messages
 # warn() - Non-fatal warnings that should be investigated
 # fail() - Fatal errors that terminate execution
 log(){ echo "[static-ip-setter] $*"; }
 warn(){ echo "[static-ip-setter][WARN] $*"; }
 fail(){ echo "[static-ip-setter][ERROR] $*" >&2; exit 1; }
+
+# =============================================================================
+# ROOT PRIVILEGE ELEVATION
+# =============================================================================
+#
+# Network configuration requires root privileges. In OCR Deputy deployments,
+# passwordless sudo is typically configured for the deployment user.
+#
+# Strategy:
+#   - Check if running as root (UID 0)
+#   - If not root, re-execute script with sudo
+#   - Use 'exec sudo' to replace current process (preserves environment)
+#   - If sudo fails (password required), exit with error
+#
+# Environment preservation:
+#   - All environment variables (STATIC_IP, IFACE, etc.) are preserved
+#   - Script arguments are preserved via "$@"
+#
+if [ "$(id -u)" -ne 0 ]; then
+  log "Not running as root, attempting to elevate with sudo..."
+
+  # Check if sudo is available
+  if ! command -v sudo >/dev/null 2>&1; then
+    fail "sudo command not found. This script requires root privileges."
+  fi
+
+  # Re-execute script with sudo
+  # exec replaces current process, preserving environment and arguments
+  # shellcheck disable=SC2093
+  exec sudo "$0" "$@"
+
+  # If we reach here, sudo failed
+  fail "Failed to elevate privileges with sudo. Passwordless sudo may not be configured."
+fi
+
+log "Running as root (UID=$(id -u))"
+
+# Setup logging to file and stdout
+# Both streams are captured to allow post-exercise log analysis while
+# maintaining real-time visibility in Deputy service output
+LOG_FILE="/var/log/static-ip-setter.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
 # =============================================================================
 # INPUT VALIDATION AND CONFIGURATION
