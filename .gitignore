@@ -1,0 +1,62 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor backup files
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+.*.sw[a-z]
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.claude/
+
+# Claude Code documentation
+CLAUDE.md
+
+# Deputy credentials (IMPORTANT - never commit tokens!)
+.deputy/
+credentials.toml
+
+# Build artifacts
+*.tar
+*.tar.gz
+*.zip
+target/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+
+# Backup files from scripts
+*.toml.bak
+*.md.bak
+*.sh.bak

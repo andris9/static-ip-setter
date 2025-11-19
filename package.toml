@@ -1,16 +1,59 @@
+# Deputy Package Configuration for static-ip-setter
+#
+# This file defines a Deputy "feature" package that configures static IPv4 addresses
+# on Ubuntu/Kali Linux systems in Open Cyber Range environments where DHCP and
+# Internet connectivity cannot be assumed.
+#
+# PACKAGE TYPE: feature
+# Feature packages apply configuration or install software on target VMs.
+#
+# HOW THIS WORKS:
+# 1. Deputy copies the static-ip.sh script to /tmp/static-ip-setter/ on the VM
+# 2. Deputy executes the script via systemd (runs once during provisioning)
+# 3. Script detects available network configuration method (netplan/NetworkManager/systemd-networkd)
+# 4. Configures static IP based on environment variables passed from SDL
+# 5. Verifies IP assignment with 10-second polling
+#
+# ENVIRONMENT VARIABLES (passed from SDL features section):
+# - STATIC_IP (required): IP address with CIDR notation (e.g., "10.1.1.20/24")
+# - IFACE (optional): Network interface name (default: "ens192", auto-detected if not exists)
+# - GATEWAY (optional): Default gateway IP address
+# - DNS (optional): Comma-separated DNS servers (e.g., "8.8.8.8,8.8.4.4")
+# - SUDO_PASSWORD (optional): Sudo password if needed (e.g., Kali: "kali")
+#
+# PUBLISHING:
+# To publish this package to Deputy registry:
+# 1. Update version below
+# 2. Run: deputy publish
+
+# PACKAGE METADATA
+# Standard Deputy package information displayed in the registry
 [package]
 name = "static-ip-setter"
 version = "1.0.8"
 description = "Static IPv4 setter for Ubuntu/Kali. Disables cloud-init networking, removes conflicting installer netplan. Uses netplan, nmcli, or systemd-networkd if present; otherwise applies temporary IP. No DHCP or Internet assumed."
 authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
-readme = "README.md"
+readme = "README.md"  # Package documentation for Deputy catalogue
 
+# ASSETS SECTION
+# Files to copy from this repository to the target VM during deployment.
+# Format: [source_path, destination_path, permissions]
+#
+# The static-ip.sh script is copied to /tmp and executed once during VM provisioning.
 assets = [["src/static-ip.sh", "/tmp/static-ip-setter/static-ip.sh", "755"]]
 
+# CONTENT SECTION
+# Defines this as a feature-type package
 [content]
 type = "feature"
 
+# FEATURE SECTION
+# Defines how this feature is executed on the target VM.
+#
+# type: "service" means run via systemd (one-time execution)
+# action: Path to the script (from assets)
+# restarts: false = runs once during provisioning, not on reboot
 [feature]
 type = "service"
 action = "/tmp/static-ip-setter/static-ip.sh"

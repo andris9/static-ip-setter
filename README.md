@@ -1,15 +1,17 @@
 # static-ip-setter
 
-Static IPv4 configuration package for Ubuntu/Kali Linux systems in offline/air-gapped CTF environments.
+**GitHub Repository:** https://github.com/andris9/static-ip-setter
+
+Static IPv4 configuration package for Ubuntu/Kali Linux systems in Open Cyber Range.
 
 ## Overview
 
-This OCR Deputy feature package configures static IPv4 addresses on systems where DHCP and Internet connectivity cannot be assumed. It intelligently selects the appropriate network configuration method based on what's available on the system.
+This OCR Deputy feature package configures static IPv4 addresses on systems where DHCP and Internet connectivity cannot be assumed. It selects the appropriate network configuration method based on what's available on the system.
 
 ## Features
 
 - **Multi-method configuration**: Supports netplan, NetworkManager, systemd-networkd, and temporary IP fallback
-- **Intelligent interface detection**: Automatically detects physical network interfaces, filtering out virtual/container interfaces
+- **Interface detection**: Automatically detects physical network interfaces, filtering out virtual/container interfaces
 - **Cloud-init neutralization**: Disables cloud-init networking and removes conflicting netplan configurations
 - **Configuration verification**: Verifies IP assignment with 10-second polling
 - **systemd-resolved aware**: Properly handles DNS configuration on modern systems
@@ -59,24 +61,16 @@ On systems with systemd-resolved, the script uses `resolvectl` for DNS configura
 
 ## Logging
 
-All operations are logged to `/var/log/static-ip-setter.log` with extensive detail:
+All operations are logged to `/var/log/static-ip-setter.log`
 
-- System information (OS, kernel, hostname)
-- Available network managers
-- Initial network state (interfaces, IPs, routes, DNS)
-- Interface detection process and reasoning
-- Configuration method selection and attempts
-- Configuration file contents (for debugging)
-- Command outputs from network tools
-- Verification results
-- Final network state
+## Publishing
 
-## Installation
-
-This package is installed via OCR Deputy:
+To publish this package:
 
 ```bash
-deputy install static-ip-setter
+# 1. Update version in package.toml
+# 2. Publish to Deputy registry
+deputy publish
 ```
 
 The script is installed to `/tmp/static-ip-setter/static-ip.sh` with executable permissions.
@@ -96,33 +90,6 @@ STATIC_IP=10.1.1.20/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/stati
 # With sudo password (e.g., on Kali Linux)
 STATIC_IP=10.1.1.20/24 SUDO_PASSWORD=kali /tmp/static-ip-setter/static-ip.sh
 ```
-
-## Privilege Elevation
-
-The script requires root privileges for network configuration. It automatically elevates itself using sudo:
-
-- If running as root (UID=0), no elevation is needed
-- If not root and `SUDO_PASSWORD` is provided, uses password-based sudo
-- If not root and no `SUDO_PASSWORD`, assumes passwordless sudo is configured
-
-All environment variables are preserved during elevation.
-
-## Troubleshooting
-
-If the script fails or behaves unexpectedly:
-
-1. Check `/var/log/static-ip-setter.log` for detailed execution logs
-2. Verify the interface name: `ip link show`
-3. Check available network managers: `which netplan nmcli`
-4. Verify systemd-networkd status: `systemctl status systemd-networkd`
-5. Test interface detection: Run script with only `STATIC_IP` set to see what interface is selected
-
-## Requirements
-
-- Ubuntu 18.04+ or Kali Linux
-- Root privileges (script auto-elevates with sudo if needed)
-- At least one physical network interface
-- One of: netplan, NetworkManager, systemd-networkd, or `ip` command
 
 ## License
 
