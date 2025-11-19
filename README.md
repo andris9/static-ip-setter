@@ -73,22 +73,69 @@ To publish this package:
 deputy publish
 ```
 
-The script is installed to `/tmp/static-ip-setter/static-ip.sh` with executable permissions.
+## Usage in SDL
 
-## Usage Example
+This package is used in OCR SDL files as a feature. Environment variables are passed through the SDL configuration.
 
-```bash
-# Basic usage with required IP (assumes passwordless sudo or running as root)
-STATIC_IP=10.1.1.20/24 /tmp/static-ip-setter/static-ip.sh
+### Basic Example
 
-# With gateway and DNS
-STATIC_IP=10.1.1.20/24 GATEWAY=10.1.1.1 DNS=8.8.8.8,8.8.4.4 /tmp/static-ip-setter/static-ip.sh
+```yaml
+features:
+  vm-static-ip:
+    type: configuration
+    source: static-ip-setter
+    version: "1.0.9"
+    environment:
+      - STATIC_IP=10.1.1.20/24
+      - IFACE=ens192
+```
 
-# With explicit interface
-STATIC_IP=10.1.1.20/24 IFACE=enp0s3 GATEWAY=10.1.1.1 /tmp/static-ip-setter/static-ip.sh
+### Complete Example with Gateway and DNS
 
-# With sudo password (e.g., on Kali Linux)
-STATIC_IP=10.1.1.20/24 SUDO_PASSWORD=kali /tmp/static-ip-setter/static-ip.sh
+```yaml
+features:
+  kali-static-ip:
+    type: configuration
+    source: static-ip-setter
+    version: "1.0.9"
+    environment:
+      - STATIC_IP=10.1.1.10/24
+      - IFACE=ens192
+      - GATEWAY=10.1.1.1
+      - DNS=8.8.8.8,8.8.4.4
+      - SUDO_PASSWORD=kali  # Required for Kali (no NOPASSWD sudo by default)
+
+  server-static-ip:
+    type: configuration
+    source: static-ip-setter
+    version: "1.0.9"
+    environment:
+      - STATIC_IP=10.1.1.20/24
+      - IFACE=ens192
+      # No SUDO_PASSWORD needed for ubuntu2404-base-web (has NOPASSWD sudo)
+```
+
+### Applying Features to Nodes
+
+```yaml
+nodes:
+  attacker-vm:
+    type: vm
+    source: kali_2025_2
+    roles:
+      kali-user:
+        username: kali
+    features:
+      kali-static-ip: kali-user  # Apply feature to this role
+
+  target-vm:
+    type: vm
+    source: ubuntu2404-base-web
+    roles:
+      server-user:
+        username: user
+    features:
+      server-static-ip: server-user  # Apply feature to this role
 ```
 
 ## License
