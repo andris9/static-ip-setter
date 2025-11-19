@@ -30,7 +30,7 @@
 # Standard Deputy package information displayed in the registry
 [package]
 name = "static-ip-setter"
-version = "1.0.10"
+version = "1.0.11"
 description = "Static IPv4 setter for Ubuntu/Kali"
 authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
