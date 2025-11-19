@@ -1,22 +1,12 @@
 # static-ip-setter
 
-**GitHub Repository:** https://github.com/andris9/static-ip-setter
+**GitHub Repository:** [github.com/andris9/static-ip-setter](https://github.com/andris9/static-ip-setter)
 
 Static IPv4 configuration package for Ubuntu/Kali Linux systems in Open Cyber Range.
 
 ## Overview
 
 This OCR Deputy feature package configures static IPv4 addresses on systems where DHCP and Internet connectivity cannot be assumed. It selects the appropriate network configuration method based on what's available on the system.
-
-## Features
-
-- **Multi-method configuration**: Supports netplan, NetworkManager, systemd-networkd, and temporary IP fallback
-- **Interface detection**: Automatically detects physical network interfaces, filtering out virtual/container interfaces
-- **Cloud-init neutralization**: Disables cloud-init networking and removes conflicting netplan configurations
-- **Configuration verification**: Verifies IP assignment with 10-second polling
-- **systemd-resolved aware**: Properly handles DNS configuration on modern systems
-- **Comprehensive logging**: Detailed logs to `/var/log/static-ip-setter.log` for debugging
-- **Offline-safe design**: No external connectivity required
 
 ## Configuration
 
@@ -103,7 +93,7 @@ features:
       - IFACE=ens192
       - GATEWAY=10.1.1.1
       - DNS=8.8.8.8,8.8.4.4
-      - SUDO_PASSWORD=kali  # Required for Kali (no NOPASSWD sudo by default)
+      - SUDO_PASSWORD=kali # Required for Kali (no NOPASSWD sudo by default)
 
   server-static-ip:
     type: configuration
@@ -126,7 +116,7 @@ nodes:
       kali-user:
         username: kali
     features:
-      kali-static-ip: kali-user  # Apply feature to this role
+      kali-static-ip: kali-user # Apply feature to this role
 
   target-vm:
     type: vm
@@ -135,7 +125,7 @@ nodes:
       server-user:
         username: user
     features:
-      server-static-ip: server-user  # Apply feature to this role
+      server-static-ip: server-user # Apply feature to this role
 ```
 
 ## License

@@ -9,7 +9,7 @@
 #
 # HOW THIS WORKS:
 # 1. Deputy copies the static-ip.sh script to /tmp/static-ip-setter/ on the VM
-# 2. Deputy executes the script via systemd (runs once during provisioning)
+# 2. Deputy executes the script during provisioning
 # 3. Script detects available network configuration method (netplan/NetworkManager/systemd-networkd)
 # 4. Configures static IP based on environment variables passed from SDL
 # 5. Verifies IP assignment with 10-second polling
@@ -31,10 +31,11 @@
 [package]
 name = "static-ip-setter"
 version = "1.0.10"
-description = "Static IPv4 setter for Ubuntu/Kali. Disables cloud-init networking, removes conflicting installer netplan. Uses netplan, nmcli, or systemd-networkd if present; otherwise applies temporary IP. No DHCP or Internet assumed."
+description = "Static IPv4 setter for Ubuntu/Kali"
 authors = ["Andris <andris@postalsys.com>"]
 license = "MIT"
-readme = "README.md"  # Package documentation for Deputy catalogue
+
+readme = "README.md" # Package documentation for Deputy catalogue
 
 # ASSETS SECTION
 # Files to copy from this repository to the target VM during deployment.
@@ -53,7 +54,7 @@ type = "feature"
 #
 # type: "service" means run via systemd (one-time execution)
 # action: Path to the script (from assets)
-# restarts: false = runs once during provisioning, not on reboot
+# restarts: boolean that determines if a machine restarts after file copy or execution operations.
 [feature]
 type = "service"
 action = "/tmp/static-ip-setter/static-ip.sh"
